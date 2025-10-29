@@ -1,11 +1,7 @@
-﻿import os
-import threading
+﻿import pygame
 
-import pygame
-
-import constants
+from broker import Client
 from constants import *
-from server import Server
 
 pygame.init()
 pygame.font.init()
@@ -16,23 +12,20 @@ HEIGHT = 3 * table_size
 
 window_size = (WIDTH, HEIGHT)
 
-CLIENT_IP = os.getenv("CLIENT_IP", "127.0.0.1")
-CLIENT_PORT = os.getenv("CLIENT_PORT", "8080")
-SERVER_PORT = os.getenv("SERVER_PORT", "8081")
-PLAYER = os.getenv("PLAYER", "X")
-
 screen = pygame.display.set_mode(window_size)
-pygame.display.set_caption(F"Tic Tac Toe {PLAYER}")
+pygame.display.set_caption(F"Tic Tac Toe ")
 
 class TicTacToe:
-	def __init__(self, server: Server):
-		self.player = PLAYER
+	def __init__(self, player: str, client: Client):
+		self.player = player
 		self.winner = None
 		self.table = ['-'] * 9
 		self.FPS = pygame.time.Clock()
 		self.running = True
 		self.my_turn = self.player == 'X'
-		self.connection = server
+		self.client = client
+
+		self.client.subscribe(f'tick-tack-toe-{self.player}')
 
 	def __draw_table(self):
 		row, col = 0, 0
@@ -96,10 +89,10 @@ class TicTacToe:
 		self.my_turn = False
 
 		# Send move to opponent
-		self.connection.send(str(pos))
+		self.client.publish(f'tick-tack-toe-{'O' if self.player == 'X' else 'X'}' , str(pos))
 
 	def main(self):
-		screen.fill(constants.background_color)
+		screen.fill(background_color)
 
 		while self.running:
 			self.__draw_table()
@@ -119,8 +112,8 @@ class TicTacToe:
 			pygame.display.flip()
 			self.FPS.tick(60)
 
-	def on_receive(self, data):
-		pos = int(data)
+	def on_receive(self, data: str):
+		pos = int(data.split(' ', 2)[1])
 		print(f"Received pos {pos}")
 
 		if self.table[pos] != '-': return
@@ -136,14 +129,5 @@ class TicTacToe:
 		if winner:
 			if winner == self.player: return 'win'
 			else: return 'loose'
-		elif '-' not in self.table:
-			return 'draw'
+		elif '-' not in self.table: return 'draw'
 		return None
-
-
-if __name__ == "__main__":
-	server = Server(int(CLIENT_PORT), int(SERVER_PORT), CLIENT_IP)
-	game = TicTacToe(server)
-
-	threading.Thread(target=server.listen, args=(game.on_receive, ), daemon=True).start()
-	game.main()
