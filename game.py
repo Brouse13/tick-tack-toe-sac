@@ -13,7 +13,6 @@ HEIGHT = 3 * table_size
 window_size = (WIDTH, HEIGHT)
 
 screen = pygame.display.set_mode(window_size)
-pygame.display.set_caption(F"Tic Tac Toe ")
 
 class TicTacToe:
 	def __init__(self, player: str, client: Client):
@@ -22,10 +21,12 @@ class TicTacToe:
 		self.table = ['-'] * 9
 		self.FPS = pygame.time.Clock()
 		self.running = True
-		self.my_turn = self.player == 'X'
+		self.my_turn = self.player == CROSS
 		self.client = client
 
 		self.client.subscribe(f'tick-tack-toe-{self.player}')
+
+		pygame.display.set_caption(f"Tic Tac Toe ")
 
 	def __draw_table(self):
 		row, col = 0, 0
@@ -41,8 +42,8 @@ class TicTacToe:
 			pygame.draw.rect(screen, (0, 0, 0), [x, y, table_size, table_size], 2)
 
 			# Draw symbols
-			if element == 'X': self.__draw_cross(col, row)
-			elif element == 'O': self.__draw_circle(col, row)
+			if element == CROSS: self.__draw_cross(col, row)
+			elif element == CIRCLE: self.__draw_circle(col, row)
 
 			col += 1
 			if col == 3: col = 0;row += 1
@@ -75,8 +76,6 @@ class TicTacToe:
 
 		x, y = pygame.mouse.get_pos()
 
-		print(f"Mouse click {x, y}")
-
 		row = y // table_size
 		col = x // table_size
 		pos = row * 3 + col
@@ -89,7 +88,8 @@ class TicTacToe:
 		self.my_turn = False
 
 		# Send move to opponent
-		self.client.publish(f'tick-tack-toe-{'O' if self.player == 'X' else 'X'}' , str(pos))
+		other = CIRCLE if self.player == CROSS else CROSS
+		self.client.publish(f'tick-tack-toe-{other}' , str(pos))
 
 	def main(self):
 		screen.fill(background_color)
@@ -114,17 +114,16 @@ class TicTacToe:
 
 	def on_receive(self, data: str):
 		pos = int(data.split(' ', 2)[1])
-		print(f"Received pos {pos}")
 
 		if self.table[pos] != '-': return
 
-		self.table[pos] = 'X' if self.player == 'O' else 'O'
+		self.table[pos] = CROSS if self.player == CIRCLE else CIRCLE
 		self.my_turn = True
 
 	def __check_game_status(self):
 		winner = None
-		if self.__has_line('X'): winner = 'X'
-		elif self.__has_line('O'): winner = 'O'
+		if self.__has_line(CROSS): winner = CROSS
+		elif self.__has_line(CIRCLE): winner = CIRCLE
 
 		if winner:
 			if winner == self.player: return 'win'

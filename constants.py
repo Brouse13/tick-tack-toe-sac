@@ -5,3 +5,6 @@ cross_color =  (255, 0, 0)
 circle_color = (0, 0, 255)
 
 table_size = 100
+
+CROSS = 'X'
+CIRCLE = 'O'
